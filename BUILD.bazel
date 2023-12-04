@@ -1,10 +1,10 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test", "nogo")
 
-# gazelle:prefix github.com/prysmaticlabs/go-bitfield
+# gazelle:prefix github.com/theQRL/go-bitfield
 gazelle(
     name = "gazelle",
-    prefix = "github.com/prysmaticlabs/go-bitfield",
+    prefix = "github.com/theQRL/go-bitfield",
 )
 
 nogo(
@@ -53,6 +53,7 @@ go_library(
         "bitlist.go",
         "bitlist64.go",
         "bitvector128.go",
+        "bitvector16.go",
         "bitvector256.go",
         "bitvector32.go",
         "bitvector4.go",
@@ -63,7 +64,7 @@ go_library(
         "errors.go",
         "min.go",
     ],
-    importpath = "github.com/prysmaticlabs/go-bitfield",
+    importpath = "github.com/theQRL/go-bitfield",
     visibility = ["//visibility:public"],
 )
 
@@ -75,6 +76,7 @@ go_test(
         "bitlist_bench_test.go",
         "bitlist_test.go",
         "bitvector128_test.go",
+        "bitvector16_test.go",
         "bitvector256_test.go",
         "bitvector32_test.go",
         "bitvector4_test.go",

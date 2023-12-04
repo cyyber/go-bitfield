@@ -9,7 +9,7 @@ See the godoc reference for more details.
 ## Usage
 
 ```
-go get github.com/prysmaticlabs/go-bitfield
+go get github.com/theQRL/go-bitfield
 ```
 
 ## Contributing
