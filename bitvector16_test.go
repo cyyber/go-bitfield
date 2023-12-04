@@ -7,17 +7,9 @@ import (
 )
 
 func TestBitvector16_Len(t *testing.T) {
-	bvs := []Bitvector16{
-		{0x00, 0x00},
-		{0x01, 0x00},
-		{0x02, 0x00},
-		{0x03, 0x00},
-	}
-
-	for _, bv := range bvs {
-		if bv.Len() != 16 {
-			t.Errorf("(%x).Len() = %d, wanted %d", bv, bv.Len(), 16)
-		}
+	bv := NewBitvector16()
+	if bv.Len() != 16 {
+		t.Errorf("(%x).Len() = %d, wanted %d", bv, bv.Len(), 16)
 	}
 }
 
@@ -269,6 +261,71 @@ func TestBitvector16_Bytes(t *testing.T) {
 	}
 }
 
+func TestBitvector16_Shift(t *testing.T) {
+	tests := []struct {
+		bitvector Bitvector16
+		shift     int
+		want      Bitvector16
+	}{
+		{
+			bitvector: Bitvector16{0x00, 0x00},
+			shift:     1,
+			want:      Bitvector16{0x00, 0x00},
+		},
+		{
+			bitvector: Bitvector16{0x01, 0x23},
+			shift:     1,
+			want:      Bitvector16{0x02, 0x47},
+		},
+		{
+			bitvector: Bitvector16{0x23, 0x01},
+			shift:     1,
+			want:      Bitvector16{0x46, 0x03},
+		},
+		{
+			bitvector: Bitvector16{0x01, 0x23},
+			shift:     -1,
+			want:      Bitvector16{0x00, 0x91},
+		},
+		{
+			bitvector: Bitvector16{0xd6, 0x23},
+			shift:     -1,
+			want:      Bitvector16{0x6b, 0x11},
+		},
+		{
+			bitvector: Bitvector16{0x01, 0x23},
+			shift:     3,
+			want:      Bitvector16{0x09, 0x1f},
+		},
+		{
+			bitvector: Bitvector16{0x17, 0xDD},
+			shift:     -3,
+			want:      Bitvector16{0x02, 0xfb},
+		},
+		{
+			bitvector: Bitvector16{0x01, 0x23},
+			shift:     8,
+			want:      Bitvector16{0x23, 0xe2},
+		},
+	}
+
+	for _, tt := range tests {
+		original := make(Bitvector128, len(tt.bitvector))
+		copy(original, tt.bitvector)
+
+		tt.bitvector.Shift(tt.shift)
+		if !bytes.Equal(tt.bitvector, tt.want) {
+			t.Errorf(
+				"(%x).Shift(%d) = %x, wanted %x",
+				original,
+				tt.shift,
+				tt.bitvector,
+				tt.want,
+			)
+		}
+	}
+}
+
 func TestBitVector16_BitIndices(t *testing.T) {
 	tests := []struct {
 		a    Bitvector16
@@ -306,6 +363,202 @@ func TestBitVector16_BitIndices(t *testing.T) {
 				"(%0.8b).BitIndices() = %x, wanted %x",
 				tt.a,
 				tt.a.BitIndices(),
+				tt.want,
+			)
+		}
+	}
+}
+
+func TestBitvector16_Contains(t *testing.T) {
+	tests := []struct {
+		a    Bitvector16
+		b    Bitvector16
+		want bool
+	}{
+		{
+			a:    Bitvector16{0x00, 0x00, 0x00, 0x00, 0x02}, // 0b00000010
+			b:    Bitvector16{0x00, 0x00, 0x00, 0x00, 0x03}, // 0b00000011
+			want: false,
+		},
+		{
+			a:    Bitvector16{0x00, 0x00, 0x03}, // 0b00000011
+			b:    Bitvector16{0x00, 0x00, 0x03}, // 0b00000011
+			want: true,
+		},
+		{
+			a:    Bitvector16{0x00, 0x00, 0x13}, // 0b00010011
+			b:    Bitvector16{0x00, 0x00, 0x15}, // 0b00010101
+			want: false,
+		},
+		{
+			a:    Bitvector16{0x00, 0x00, 0x1F}, // 0b00011111
+			b:    Bitvector16{0x00, 0x00, 0x13}, // 0b00010011
+			want: true,
+		},
+		{
+			a:    Bitvector16{0x00, 0x00, 0x1F}, // 0b00011111
+			b:    Bitvector16{0x00, 0x00, 0x13}, // 0b00010011
+			want: true,
+		},
+		{
+			a:    Bitvector16{0x00, 0x1F, 0x03}, // 0b00011111, 0b00000011
+			b:    Bitvector16{0x00, 0x13, 0x02}, // 0b00010011, 0b00000010
+			want: true,
+		},
+		{
+			a:    Bitvector16{0x00, 0x1F, 0x01}, // 0b00011111, 0b00000001
+			b:    Bitvector16{0x00, 0x93, 0x01}, // 0b10010011, 0b00000001
+			want: false,
+		},
+		{
+			a:    Bitvector16{0x00, 0xFF, 0x02}, // 0b11111111, 0x00000010
+			b:    Bitvector16{0x00, 0x13, 0x03}, // 0b00010011, 0x00000011
+			want: false,
+		},
+		{
+			a:    Bitvector16{0x00, 0xFF, 0x85}, // 0b11111111, 0x10000111
+			b:    Bitvector16{0x00, 0x13, 0x8F}, // 0b00010011, 0x10001111
+			want: false,
+		},
+		{
+			a:    Bitvector16{0xFF, 0x8F}, // 0b11111111, 0x10001111
+			b:    Bitvector16{0x13, 0x83}, // 0b00010011, 0x10000011
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		if got, err := tt.a.Contains(tt.b); got != tt.want || err != nil {
+			t.Errorf(
+				"(%x).Contains(%x) = %t, %v, wanted %t",
+				tt.a,
+				tt.b,
+				got,
+				err,
+				tt.want,
+			)
+		}
+	}
+}
+
+func TestBitvector16_Overlaps(t *testing.T) {
+	tests := []struct {
+		a    Bitvector16
+		b    Bitvector16
+		want bool
+	}{
+		{
+			a:    Bitvector16{0x06}, // 0b00000110
+			b:    Bitvector16{0x01}, // 0b00000101
+			want: false,
+		},
+		{
+			a:    Bitvector16{0x06}, // 0b00000110
+			b:    Bitvector16{0x05}, // 0b00000101
+			want: true,
+		},
+		{
+			a:    Bitvector16{0x1A}, // 0b00011010
+			b:    Bitvector16{0x25}, // 0b00100101
+			want: false,
+		},
+		{
+			a:    Bitvector16{0x1F}, // 0b00011111
+			b:    Bitvector16{0x11}, // 0b00010001
+			want: true,
+		},
+		{
+			a:    Bitvector16{0xFF, 0x85}, // 0b11111111, 0b10000111
+			b:    Bitvector16{0x13, 0x8F}, // 0b00010011, 0b10001111
+			want: true,
+		},
+		{
+			a:    Bitvector16{0x00, 0x40}, // 0b00000001, 0b01000000
+			b:    Bitvector16{0x00, 0x40}, // 0b00000010, 0b01000000
+			want: true,
+		},
+		{
+			a:    Bitvector16{0x01, 0x40}, // 0b00000001, 0b01000000
+			b:    Bitvector16{0x02, 0x30}, // 0b00000010, 0b01000000
+			want: false,
+		},
+		{
+			a:    Bitvector16{0x01, 0x01, 0x01}, // 0b00000001, 0b00000001, 0b00000001
+			b:    Bitvector16{0x02, 0x00, 0x00}, // 0b00000010, 0b00000000, 0b00000001
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		if got, err := tt.a.Overlaps(tt.b); got != tt.want || err != nil {
+			t.Errorf(
+				"(%x).Overlaps(%x) = %t, %v, wanted %t",
+				tt.a,
+				tt.b,
+				got,
+				err,
+				tt.want,
+			)
+		}
+	}
+}
+
+func TestBitVector16_Or(t *testing.T) {
+	tests := []struct {
+		a    Bitvector16
+		b    Bitvector16
+		want Bitvector16
+	}{
+		{
+			a:    Bitvector16{0x02}, // 0b00000010
+			b:    Bitvector16{0x03}, // 0b00000011
+			want: Bitvector16{0x03}, // 0b00000011
+		},
+		{
+			a:    Bitvector16{0x03}, // 0b00000011
+			b:    Bitvector16{0x03}, // 0b00000011
+			want: Bitvector16{0x03}, // 0b00000011
+		},
+		{
+			a:    Bitvector16{0x13}, // 0b00010011
+			b:    Bitvector16{0x15}, // 0b00010101
+			want: Bitvector16{0x17}, // 0b00010111
+		},
+		{
+			a:    Bitvector16{0x1F}, // 0b00011111
+			b:    Bitvector16{0x13}, // 0b00010011
+			want: Bitvector16{0x1F}, // 0b00011111
+		},
+		{
+			a:    Bitvector16{0x1F, 0x03}, // 0b00011111, 0b00000011
+			b:    Bitvector16{0x13, 0x02}, // 0b00010011, 0b00000010
+			want: Bitvector16{0x1F, 0x03}, // 0b00011111, 0b00000011
+		},
+		{
+			a:    Bitvector16{0x1F, 0x01}, // 0b00011111, 0b00000001
+			b:    Bitvector16{0x93, 0x01}, // 0b10010011, 0b00000001
+			want: Bitvector16{0x9F, 0x01}, // 0b00011111, 0b00000001
+		},
+		{
+			a:    Bitvector16{0xFF, 0x02}, // 0b11111111, 0x00000010
+			b:    Bitvector16{0x13, 0x03}, // 0b00010011, 0x00000011
+			want: Bitvector16{0xFF, 0x03}, // 0b11111111, 0x00000011
+		},
+		{
+			a:    Bitvector16{0xFF, 0x85}, // 0b11111111, 0x10000111
+			b:    Bitvector16{0x13, 0x8F}, // 0b00010011, 0x10001111
+			want: Bitvector16{0xFF, 0x8F}, // 0b11111111, 0x10001111
+		},
+	}
+
+	for _, tt := range tests {
+		if got, err := tt.a.Or(tt.b); !bytes.Equal(got, tt.want) {
+			t.Errorf(
+				"(%x).Or(%x) = %x, %v, wanted %x",
+				tt.a,
+				tt.b,
+				got,
+				err,
 				tt.want,
 			)
 		}
